@@ -75,8 +75,9 @@ bool tile_equalish(const GraphTile a, const GraphTile b, size_t difference, cons
     //check that the bins contain what was just added to them
     for(size_t i = 0; i < bins.size(); ++i) {
       auto bin = b.GetBin(i % kBinsDim, i / kBinsDim);
+      auto offset = bin.size() - bins[i].size();
       for(size_t j = 0; j < bins[i].size(); ++j) {
-        if(bin[j] != bins[i][j])
+        if(bin[j + offset] != bins[i][j])
           return false;
       }
     }
@@ -115,16 +116,30 @@ void TestDuplicateEdgeInfo() {
 
 void TestAddBins() {
 
-  //test a couple of tiles
+  //if you update the tile format you must regenerate test tiles. after your tile format change,
+  //run valhalla_build_tiles on a reasonable sized extract. when its done do the following:
+  /*
+    git rm -rf test/data/bin_tiles/no_bin
+    for f in $(find /data/valhalla/2 -printf '%s %P\n'| sort -n | head -n 2 | awk '{print $2}'); do
+      mkdir -p test/data/bin_tiles/no_bin/2/$(dirname ${f})
+      cp -rp /data/valhalla/2/${f} test/data/bin_tiles/no_bin/2/${f}
+    done
+    git add test/data/bin_tiles/no_bin
+    git status
+   */
+  //this will grab the 2 smallest tiles from you new tile set and make them the new test tiles
+  //note the names of the new tiles and update the list with path and index in the list just below
   for(const auto& test_tile : std::list<std::pair<std::string, size_t> >
       {
-        {"609/453.gph", 609453},
+        {"746/338.gph", 746338},
         {"762/161.gph", 762161}
       }) {
 
     //load a tile
     GraphId id(test_tile.second,2,0);
     GraphTile t(TileHierarchy("test/data/bin_tiles/no_bin"), id);
+    if(!t.size())
+      throw std::runtime_error("Couldn't load test tile");
 
     //alter the config to point to another dir
     TileHierarchy h("test/data/bin_tiles/bin");

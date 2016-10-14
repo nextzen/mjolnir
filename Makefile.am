@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 AM_LDFLAGS = @BOOST_LDFLAGS@ @LUA_LIB@ @COVERAGE_LDFLAGS@
-AM_CPPFLAGS = -Ivalhalla -Ivalhalla/proto @BOOST_CPPFLAGS@
-AM_CXXFLAGS = -Ivalhalla -Ivalhalla/proto @COVERAGE_CXXFLAGS@ @LUA_INCLUDE@
+AM_CPPFLAGS = -I@abs_srcdir@/valhalla -I@abs_srcdir@/valhalla/proto @BOOST_CPPFLAGS@ -Igenfiles
+AM_CXXFLAGS = -I@abs_srcdir@/valhalla -I@abs_srcdir@/valhalla/proto @COVERAGE_CXXFLAGS@ @LUA_INCLUDE@ -Igenfiles
 LIBTOOL_DEPS = @LIBTOOL_DEPS@
 libtool: $(LIBTOOL_DEPS)
 	$(SHELL) ./config.status libtool
@@ -34,8 +34,13 @@ coverage/index.html: coverage.info
 clean-gcno:
 	-find -name '*.gcno' -exec rm -rf {} \;
 
-clean-local: clean-coverage clean-gcno
+clean-local: clean-coverage clean-gcno clean-genfiles
+else
+clean-local: clean-genfiles
 endif
+
+clean-genfiles:
+	-rm -rf genfiles
 
 # proto generation etc
 PROTO_FILES = proto/osmformat.proto proto/fileformat.proto proto/transit.proto
@@ -43,13 +48,13 @@ src/proto/%.pb.cc: proto/%.proto
 	@echo " PROTOC $<"; mkdir -p src/proto valhalla/proto; @PROTOC_BIN@ -Iproto --cpp_out=valhalla/proto $< && mv valhalla/proto/$(@F) src/proto
 
 #lua code for parsing
-src/mjolnir/graph_lua_proc.h: lua/graph.lua
-	-xxd -i lua/graph.lua > src/mjolnir/graph_lua_proc.h
-src/mjolnir/admin_lua_proc.h: lua/admin.lua
-	-xxd -i lua/admin.lua > src/mjolnir/admin_lua_proc.h
-BUILT_SOURCES = $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES)) src/mjolnir/graph_lua_proc.h src/mjolnir/admin_lua_proc.h
-nodist_libvalhalla_mjolnir_la_SOURCES = $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES)) src/mjolnir/graph_lua_proc.h src/mjolnir/admin_lua_proc.h
-CLEANFILES = $(patsubst %.proto,valhalla/%.pb.h,$(PROTO_FILES)) $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES)) src/mjolnir/graph_lua_proc.h src/mjolnir/admin_lua_proc.h
+genfiles/graph_lua_proc.h: lua/graph.lua
+	-mkdir -p @abs_builddir@/genfiles && cd @abs_srcdir@ && xxd -i lua/graph.lua > @abs_builddir@/genfiles/graph_lua_proc.h
+genfiles/admin_lua_proc.h: lua/admin.lua
+	-mkdir -p @abs_builddir@/genfiles && cd @abs_srcdir@ && xxd -i lua/admin.lua > @abs_builddir@/genfiles/admin_lua_proc.h
+BUILT_SOURCES = $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES)) genfiles/graph_lua_proc.h genfiles/admin_lua_proc.h
+nodist_libvalhalla_mjolnir_la_SOURCES = $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES)) genfiles/graph_lua_proc.h genfiles/admin_lua_proc.h
+CLEANFILES = $(patsubst %.proto,valhalla/%.pb.h,$(PROTO_FILES)) $(patsubst %.proto,src/%.pb.cc,$(PROTO_FILES))
 
 # lib valhalla compilation etc
 lib_LTLIBRARIES = libvalhalla_mjolnir.la

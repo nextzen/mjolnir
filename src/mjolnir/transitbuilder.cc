@@ -581,13 +581,6 @@ void build(const std::string& transit_dir,
   results.set_value({});
 }
 
-GraphId TransitToTile(const boost::property_tree::ptree& pt, const std::string& transit_tile) {
-  auto tile_dir = pt.get<std::string>("mjolnir.tile_dir");
-  auto transit_dir = pt.get<std::string>("mjolnir.transit_dir");
-  auto graph_tile = tile_dir + transit_tile.substr(transit_dir.size());
-  return GraphTile::GetTileId(graph_tile, tile_dir);
-}
-
 }
 
 namespace valhalla {
@@ -615,7 +608,7 @@ void TransitBuilder::Build(const boost::property_tree::ptree& pt) {
     boost::filesystem::recursive_directory_iterator transit_file_itr(*transit_dir + std::to_string(local_level +1 ) + "/"), end_file_itr;
     for(; transit_file_itr != end_file_itr; ++transit_file_itr) {
       if(boost::filesystem::is_regular(transit_file_itr->path()) && transit_file_itr->path().extension() == ".gph") {
-        auto graph_id = TransitToTile(pt, transit_file_itr->path().string());
+        auto graph_id = GraphTile::GetTileId(transit_file_itr->path().string());
         auto local_graph_id = graph_id;
         local_graph_id.fields.level -= 1;
         if(GraphReader::DoesTileExist(hierarchy_properties, local_graph_id)) {

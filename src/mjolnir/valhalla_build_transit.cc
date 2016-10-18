@@ -84,15 +84,6 @@ struct builder_stats {
   }
 };
 
-GraphId TransitToTile(const boost::property_tree::ptree& pt, const std::string& transit_tile) {
-  auto tile_dir = pt.get<std::string>("mjolnir.tile_dir");
-  auto transit_dir = pt.get<std::string>("mjolnir.transit_dir");
-  auto graph_tile = tile_dir + transit_tile.substr(transit_dir.size());
-  boost::algorithm::trim_if(graph_tile, boost::is_any_of(".pbf"));
-  graph_tile += ".gph";
-  return GraphTile::GetTileId(graph_tile, tile_dir);
-}
-
 struct logged_error_t: public std::runtime_error {
   logged_error_t(const std::string& msg):std::runtime_error(msg) {
     LOG_ERROR(msg);
@@ -725,15 +716,6 @@ std::list<GraphId> fetch(const ptree& pt, std::priority_queue<weighted_tile_t>& 
 
   LOG_INFO("Finished");
   return dangling;
-}
-
-GraphId id(const boost::property_tree::ptree& pt, const std::string& transit_tile) {
-  auto tile_dir = pt.get<std::string>("mjolnir.tile_dir");
-  auto transit_dir = pt.get<std::string>("mjolnir.transit_dir");
-  auto graph_tile = tile_dir + transit_tile.substr(transit_dir.size());
-  boost::algorithm::trim_if(graph_tile, boost::is_any_of(".pbf"));
-  graph_tile += ".gph";
-  return GraphTile::GetTileId(graph_tile, tile_dir);
 }
 
 Transit read_pbf(const std::string& file_name, std::mutex& lock) {
@@ -1748,7 +1730,7 @@ int main(int argc, char** argv) {
   std::unordered_set<GraphId> all_tiles;
   for(; transit_file_itr != end_file_itr; ++transit_file_itr)
     if(boost::filesystem::is_regular(transit_file_itr->path()) && transit_file_itr->path().extension() == ".pbf")
-      all_tiles.emplace(id(pt, transit_file_itr->path().string()));
+      all_tiles.emplace(GraphTile::GetTileId(transit_file_itr->path().string()));
 
   //spawn threads to connect dangling stop pairs to adjacent tiles' stops
   stitch(pt, all_tiles, dangling_tiles);

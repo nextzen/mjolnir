@@ -52,9 +52,11 @@ struct Departure {
   uint32_t headsign_offset;
   uint32_t dep_time;
   uint32_t schedule_index;
+  uint32_t frequency_end_time;
+  uint16_t elapsed_time;
+  uint16_t frequency;
   float    orig_dist_traveled;
   float    dest_dist_traveled;
-  uint16_t elapsed_time;
   bool     wheelchair_accessible;
   bool     bicycle_accessible;
 };
@@ -185,9 +187,9 @@ std::priority_queue<weighted_tile_t> which_tiles(const ptree& pt) {
   auto feeds = curler(url("/api/v1/feeds.geojson?per_page=false", pt), "features");
   for(const auto& feature : feeds.get_child("features")) {
     //use the following logic if you only want certain feeds
-  //auto feed = feature.second.get_optional<std::string>("properties.onestop_id");
-  //if (feed && *feed == "f-drt-mbta") {
-
+    auto feed = feature.second.get_optional<std::string>("properties.onestop_id");
+    //if (feed && *feed == "f-9qh0-anaheim~ca~us") {
+    // if (feed && *feed == "f-drt-mbta") {
     //should be a polygon
     auto type = feature.second.get_optional<std::string>("geometry.type");
     if(!type || *type != "Polygon") {
@@ -303,11 +305,12 @@ void get_routes(Transit& tile, std::unordered_map<std::string, size_t>& routes,
       type = Transit_VehicleType::Transit_VehicleType_kTram;
     else if (vehicle_type == "metro")
       type = Transit_VehicleType::Transit_VehicleType_kMetro;
-    else if (vehicle_type == "rail")
+    else if (vehicle_type == "rail" || vehicle_type == "suburban_railway")
       type = Transit_VehicleType::Transit_VehicleType_kRail;
     else if (vehicle_type == "bus" || vehicle_type == "trolleybus_service" ||
              vehicle_type == "express_bus_service" || vehicle_type == "local_bus_service" ||
-             vehicle_type == "bus_service" || vehicle_type == "shuttle_bus")
+             vehicle_type == "bus_service" || vehicle_type == "shuttle_bus" ||
+             vehicle_type == "demand_and_response_bus_service")
       type = Transit_VehicleType::Transit_VehicleType_kBus;
     else if (vehicle_type == "ferry")
       type = Transit_VehicleType::Transit_VehicleType_kFerry;
@@ -514,6 +517,17 @@ bool get_stop_pairs(Transit& tile, unique_transit_t& uniques, const std::unorder
       } else {
         LOG_WARN("Shape not found for " + shape_id);
       }
+    }
+
+    auto frequency_start_time = pair_pt.second.get<std::string>("frequency_start_time", "null");
+    auto frequency_end_time = pair_pt.second.get<std::string>("frequency_end_time", "null");
+    auto frequency_headway_seconds = pair_pt.second.get<std::string>("frequency_headway_seconds", "null");
+
+    if (frequency_start_time != "null" && frequency_end_time != "null" && frequency_headway_seconds != "null") {
+      if (origin_time < frequency_start_time)
+        LOG_WARN("Frequency frequency_start_time after origin_time: " + pair->origin_onestop_id() + " --> " + pair->destination_onestop_id());
+      pair->set_frequency_end_time(DateTime::seconds_from_midnight(frequency_end_time));
+      pair->set_frequency_headway_seconds(std::stoi(frequency_headway_seconds));
     }
   }
 
@@ -948,6 +962,9 @@ std::unordered_multimap<GraphId, Departure> ProcessStopPairs(
           dep.blockid = sp.has_block_id() ? sp.block_id() : 0;
           dep.dep_time = sp.origin_departure_time();
           dep.elapsed_time = sp.destination_arrival_time() - dep.dep_time;
+
+          dep.frequency_end_time = sp.has_frequency_end_time() ? sp.frequency_end_time() : 0;
+          dep.frequency = sp.has_frequency_headway_seconds() ? sp.frequency_headway_seconds() : 0;
 
           if (!sp.bikes_allowed()) {
             stop_access[dep.orig_pbf_graphid] |= kBicycleAccess;
@@ -1458,7 +1475,6 @@ void build_tiles(const boost::property_tree::ptree& pt, std::mutex& lock,
 
     // Get transit pbf tile
     const std::string transit_dir = pt.get<std::string>("transit_dir");
-    //std::cout << transit_dir << std::endl;
 
     std::string file_name = GraphTile::FileSuffix(GraphId(tile_id.tileid(), tile_id.level(),0), hierarchy_transit_level);
     boost::algorithm::trim_if(file_name, boost::is_any_of(".gph"));
@@ -1586,12 +1602,24 @@ void build_tiles(const boost::property_tree::ptree& pt, std::mutex& lock,
          }
 
          try {
-           // Form transit departures
-           TransitDeparture td(lineid, dep.trip, dep.route,
-                               dep.blockid, dep.headsign_offset, dep.dep_time,
-                               dep.elapsed_time, dep.schedule_index,
-                               dep.wheelchair_accessible, dep.bicycle_accessible);
-           tilebuilder_transit.AddTransitDeparture(std::move(td));
+
+           if (dep.frequency == 0) {
+             // Form transit departures -- fixed departure time
+             TransitDeparture td(lineid, dep.trip, dep.route,
+                                 dep.blockid, dep.headsign_offset, dep.dep_time,
+                                 dep.elapsed_time, dep.schedule_index,
+                                 dep.wheelchair_accessible, dep.bicycle_accessible);
+             tilebuilder_transit.AddTransitDeparture(std::move(td));
+           } else {
+
+             // Form transit departures -- frequency departure time
+             TransitDeparture td(lineid, dep.trip, dep.route,
+                                 dep.blockid, dep.headsign_offset,
+                                 dep.dep_time, dep.frequency_end_time,
+                                 dep.frequency, dep.elapsed_time, dep.schedule_index,
+                                 dep.wheelchair_accessible, dep.bicycle_accessible);
+             tilebuilder_transit.AddTransitDeparture(std::move(td));
+           }
          } catch(const std::exception& e) {
            LOG_ERROR(e.what());
          }

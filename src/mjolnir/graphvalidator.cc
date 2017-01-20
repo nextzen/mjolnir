@@ -91,7 +91,11 @@ uint32_t GetOpposingEdgeIndex(const GraphId& startnode, DirectedEdge& edge,
   bool sametile = (startnode.tileid() == endnode.tileid());
 
   // Set the end node iso.  Used for country crossings.
-  endnodeiso = end_tile->admin(nodeinfo->admin_index())->country_iso();
+  if (end_tile->header()->admincount() > 0) {
+    endnodeiso = end_tile->admin(nodeinfo->admin_index())->country_iso();
+  } else {
+    endnodeiso.clear();
+  }
 
   // Set the deadend flag (TODO - do we need to worry about driveability)
   deadend = nodeinfo->intersection() == IntersectionType::kDeadEnd;
@@ -303,12 +307,16 @@ void validate(const boost::property_tree::ptree& pt,
       // Iterate through the nodes and the directed edges
       float roadlength = 0.0f;
       uint32_t nodecount = tilebuilder.header()->nodecount();
+      uint32_t admincount = tile->header()->admincount();
       GraphId node = tile_id;
       for (uint32_t i = 0; i < nodecount; i++, node++) {
         // The node we will modify
         NodeInfo nodeinfo = tilebuilder.node(i);
         auto ni = tile->node(i);
-        std::string begin_node_iso = tile->admin(nodeinfo.admin_index())->country_iso();
+        std::string begin_node_iso;
+        if (admincount > 0) {
+          begin_node_iso = tile->admin(nodeinfo.admin_index())->country_iso();
+        }
 
         // Go through directed edges and validate/update data
         uint32_t idx = ni->edge_index();

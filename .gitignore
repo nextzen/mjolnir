@@ -40,6 +40,7 @@ valhalla_query_transit
 valhalla_ways_to_edges
 valhalla_build_speeds
 valhalla_build_statistics
+valhalla_validate_transit
 *.o
 .deps/
 .dirstamp

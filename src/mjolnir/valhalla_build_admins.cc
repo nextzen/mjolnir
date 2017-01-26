@@ -55,11 +55,11 @@ std::vector<std::string> input_files;
 bool ParseArguments(int argc, char *argv[]) {
 
   bpo::options_description options(
-      "pbfadminbuilder " VERSION "\n"
+      "valhalla_build_admins " VERSION "\n"
       "\n"
-      " Usage: pbfadminbuilder [options] <protocolbuffer_input_file>\n"
+      " Usage: valhalla_build_admins [options] <protocolbuffer_input_file>\n"
       "\n"
-      "pbfadminbuilder is a program that creates the route graph from a osm.pbf "
+      "valhalla_build_admins is a program that creates the route graph from a osm.pbf "
       "extract or osm2pgsql import.  You should use the lua scripts provided for "
       "either method.  The scripts are located in the ./import/osm2pgsql directory.  "
       "Moreover, sample json cofigs are located in ./import/configs directory."
@@ -96,7 +96,7 @@ bool ParseArguments(int argc, char *argv[]) {
   }
 
   if (vm.count("version")) {
-    std::cout << "pbfadminbuilder " << VERSION << "\n";
+    std::cout << "valhalla_build_admins " << VERSION << "\n";
     return true;
   }
 

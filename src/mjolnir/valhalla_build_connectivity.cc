@@ -30,11 +30,11 @@ struct PPMObject {
 bool ParseArguments(int argc, char *argv[]) {
 
   bpo::options_description options(
-    "connectivitymap " VERSION "\n"
+    "valhalla_build_connectivity " VERSION "\n"
     "\n"
-    " Usage: connectivitymap [options]\n"
+    " Usage: valhalla_build_connectivity [options]\n"
     "\n"
-    "connectivitymap is a program that creates a PPM image file representing "
+    "valhalla_build_connectivity is a program that creates a PPM image file representing "
     "the connectivity between tiles."
     "\n"
     "\n");
@@ -69,7 +69,7 @@ bool ParseArguments(int argc, char *argv[]) {
   }
 
   if (vm.count("version")) {
-    std::cout << "connectivitymap " << VERSION << "\n";
+    std::cout << "valhalla_build_connectivity " << VERSION << "\n";
     return true;
   }
 

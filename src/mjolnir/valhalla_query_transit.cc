@@ -336,9 +336,9 @@ GraphId GetGraphId(Transit& transit, const std::string& onestop_id) {
 
 // Main method for testing a single path
 int main(int argc, char *argv[]) {
-  bpo::options_description options("transit_stop_query\n"
-  "\nUsage: transit_stop_query [options]\n"
-  "transit_stop_query is a simple command line test tool to log transit stop info."
+  bpo::options_description options("valhalla_query_transit\n"
+  "\nUsage: valhalla_query_transit [options]\n"
+  "valhalla_query_transit is a simple command line test tool to log transit stop info."
   "\n");
 
   std::string config, origin, dest, time;

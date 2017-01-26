@@ -40,11 +40,11 @@ struct EdgeAndDirection {
 bool ParseArguments(int argc, char *argv[]) {
 
   bpo::options_description options(
-    "ways_to_edges " VERSION "\n"
+    "valhalla_ways_to_edges " VERSION "\n"
     "\n"
-    " Usage: ways_to_edges [options]\n"
+    " Usage: valhalla_ways_to_edges [options]\n"
     "\n"
-    "ways_to_edges is a program that creates a list of edges for each OSM way "
+    "valhalla_ways_to_edges is a program that creates a list of edges for each OSM way "
     "on the local level tiles."
     "\n"
     "\n");
@@ -79,7 +79,7 @@ bool ParseArguments(int argc, char *argv[]) {
   }
 
   if (vm.count("version")) {
-    std::cout << "ways_to_edges " << VERSION << "\n";
+    std::cout << "valhalla_ways_to_edges " << VERSION << "\n";
     return true;
   }
 

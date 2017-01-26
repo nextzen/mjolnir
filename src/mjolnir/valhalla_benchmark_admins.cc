@@ -215,11 +215,11 @@ std::cout << "In Benchmark" << std::endl;
 bool ParseArguments(int argc, char *argv[]) {
   std::vector<std::string> input_files;
   bpo::options_description options(
-      "adminbenchmark " VERSION "\n"
+      "valhalla_benchmark_admins " VERSION "\n"
       "\n"
-      " Usage: adminbenchmark [options] \n"
+      " Usage: valhalla_benchmark_admins [options] \n"
       "\n"
-      "adminbenchmark is a program to time the admin queries "
+      "valhalla_benchmark_admins is a program to time the admin queries "
       "\n"
       "\n");
 
@@ -249,7 +249,7 @@ bool ParseArguments(int argc, char *argv[]) {
   }
 
   if (vm.count("version")) {
-    std::cout << "adminbenchmark " << VERSION << "\n";
+    std::cout << "valhalla_benchmark_admins " << VERSION << "\n";
     return true;
   }
 

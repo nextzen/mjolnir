@@ -18,5 +18,15 @@ std::vector<std::string> GetTagTokens(const std::string& tag_value,
   return tokens;
 }
 
+std::string remove_parens(const std::string& s) {
+  std::string ret;
+  for (auto c : s) {
+    if (c != '"') {
+      ret += c;
+    }
+  }
+  return ret;
+}
+
 }
 }

@@ -4,7 +4,9 @@
 #include <boost/property_tree/ptree.hpp>
 #include <unordered_set>
 
+#include "mjolnir/util.h"
 #include <valhalla/baldr/graphid.h>
+#include <valhalla/baldr/datetime.h>
 
 namespace valhalla {
 namespace mjolnir {
@@ -19,6 +21,10 @@ struct OneStopTest {
     return origin < other.origin;
   }
 };
+
+std::vector<OneStopTest> ParseTestFile(const std::string& filename);
+void ParseLogFile(const std::string& filename);
+
 /**
  * Class used to test graph tile information at the transit level.
  */
@@ -33,6 +39,14 @@ class ValidateTransit {
    */
   static void Validate(const boost::property_tree::ptree& pt,
                        const std::unordered_set<baldr::GraphId>& all_tiles,
+                       const std::vector<OneStopTest>& onestoptests);
+
+  /**
+   * Validate the transit level graph tile information.
+   * @param pt            property tree containing the hierarchy configuration
+   * @param onestoptests  list of origin and destinations to test
+   */
+  static void Validate(const boost::property_tree::ptree& pt,
                        const std::vector<OneStopTest>& onestoptests);
 
 };

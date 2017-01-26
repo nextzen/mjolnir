@@ -170,9 +170,8 @@ sidewalk = {
 ["detached"] = "false",
 ["raised"] = "true",
 ["separate_double"] = "false",
-["seperate"] = "false",
 ["sidepath"] = "false",
-["explicit"] = "false"
+["explicit"] = "true"
 }
 
 use = {
@@ -555,7 +554,7 @@ function normalize_speed(speed)
   --check if the rest of the string ends in "mph" convert to kph
   if num then 
     if speed:sub(-3) == "mph" then
-      num = num * 1.609344
+      num = round(num * 1.609344)
     end
 
     --if num > 150kph or num < 10kph....toss    

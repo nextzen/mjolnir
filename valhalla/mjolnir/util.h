@@ -17,6 +17,8 @@ namespace mjolnir {
 std::vector<std::string> GetTagTokens(const std::string& tag_value,
                                       char delim = ';');
 
+std::string remove_parens(const std::string& s);
+
 }
 }
 #endif  // VALHALLA_MJOLNIR_UTIL_H_

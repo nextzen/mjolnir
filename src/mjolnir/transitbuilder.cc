@@ -1,6 +1,7 @@
 #include "mjolnir/transitbuilder.h"
 #include "mjolnir/graphtilebuilder.h"
 #include "proto/transit.pb.h"
+#include "mjolnir/validatetransit.h"
 
 #include <list>
 #include <future>

@@ -22,7 +22,19 @@ struct OneStopTest {
   }
 };
 
+/**
+ * Parse the test file and return a list of tests.
+ * @param filename      test filename
+ *
+ * @return  vector of tests.
+ */
 std::vector<OneStopTest> ParseTestFile(const std::string& filename);
+
+/**
+ * Parse a log file and write out the tests.
+ * @param filename      test filename
+ *
+ */
 void ParseLogFile(const std::string& filename);
 
 /**
@@ -36,17 +48,11 @@ class ValidateTransit {
    * @param pt            property tree containing the hierarchy configuration
    * @param all_tiles     unordered set of all the transit tiles.
    * @param onestoptests  list of origin and destinations to test
+   *
+   * @return  did everything pass?
    */
-  static void Validate(const boost::property_tree::ptree& pt,
+  static bool Validate(const boost::property_tree::ptree& pt,
                        const std::unordered_set<baldr::GraphId>& all_tiles,
-                       const std::vector<OneStopTest>& onestoptests);
-
-  /**
-   * Validate the transit level graph tile information.
-   * @param pt            property tree containing the hierarchy configuration
-   * @param onestoptests  list of origin and destinations to test
-   */
-  static void Validate(const boost::property_tree::ptree& pt,
                        const std::vector<OneStopTest>& onestoptests);
 
 };

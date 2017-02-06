@@ -36,24 +36,27 @@ struct validate_stats {
 
 bool WalkTransitLines(const GraphId& n_graphId, GraphReader& reader,
                       const GraphId& tileid, std::mutex& lock,
-                      const std::string& end_id, const std::string& date_time,
-                      const std::string& route_id) {
-
+                      std::unordered_multimap<GraphId,uint64_t>& visited_map, const std::string& date_time,
+                      const std::string& end_name, const std::string& route_name) {
   lock.lock();
   const GraphTile* endnodetile = reader.GetGraphTile(n_graphId);
   lock.unlock();
-
   const NodeInfo* n_info = endnodetile->node(n_graphId);
   GraphId currentNode = n_graphId;
-  GraphId prev_Node;
 
+  uint32_t tripid = 0;
   uint32_t j = 0;
   uint32_t localtime = DateTime::seconds_from_midnight(date_time);
   uint32_t date = DateTime::days_from_pivot_date(DateTime::get_formatted_date(date_time));
   uint32_t dow  = DateTime::day_of_week_mask(date_time);
   uint32_t date_created = endnodetile->header()->date_created();
-  uint32_t day = date - date_created;
+  uint32_t day = 0;
   uint32_t time_added = 0;
+  bool date_before_tile = false;
+  if (date < date_created)
+    date_before_tile = true;
+  else
+    day = date - date_created;
 
   bool bDone = false;
 
@@ -62,18 +65,36 @@ bool WalkTransitLines(const GraphId& n_graphId, GraphReader& reader,
     const DirectedEdge* de =
         endnodetile->directededge(n_info->edge_index() + j);
 
+    GraphId edgeid(currentNode.tileid(), currentNode.level(), n_info->edge_index() + j);
+
     // all should be a transit lines
-    if (de->IsTransitLine() && de->endnode() != prev_Node) {
+    if (de->IsTransitLine()) {
 
       const TransitDeparture* departure = endnodetile->GetNextDeparture(
           de->lineid(), localtime, day, dow, false,
           false, false);
 
+      bool visited = false;
       if (departure) {
+        auto itr = visited_map.equal_range(edgeid);
+        for (auto it = itr.first; it != itr.second; ++it) {
+            if (it->second == departure->departure_time()) {
+              visited = true;
+              break;
+            }
+        }
+      }
+
+      if (departure && !visited && (tripid == 0 || departure->tripid() == tripid)) {
+
         const TransitRoute* route = endnodetile->GetTransitRoute(departure->routeid());
-        if (endnodetile->GetName(route->one_stop_offset()) == route_id) {
-          prev_Node = currentNode;
+        if (endnodetile->GetName(route->one_stop_offset()) == route_name) {
+          visited_map.emplace(edgeid, departure->departure_time());
           currentNode = de->endnode();
+
+          if (tripid == 0)
+            tripid = departure->tripid();
+
           //get the new tile if needed.
           if (endnodetile->id() != currentNode.Tile_Base()) {
             lock.lock();
@@ -86,7 +107,7 @@ bool WalkTransitLines(const GraphId& n_graphId, GraphReader& reader,
           const TransitStop* transit_stop = endnodetile->GetTransitStop(
               n_info->stop_index());
 
-          if (endnodetile->GetName(transit_stop->one_stop_offset()) == end_id) {
+          if (endnodetile->GetName(transit_stop->one_stop_offset()) == end_name) {
             bDone = true;
             break;
           }
@@ -102,6 +123,7 @@ bool WalkTransitLines(const GraphId& n_graphId, GraphReader& reader,
       time_added += 30;
       localtime += 30;
       j=0;
+      tripid = 0;
       continue;
     }
     j++;
@@ -148,17 +170,27 @@ void validate(const boost::property_tree::ptree& pt, std::mutex& lock,
 
           GraphId currentNode = GraphId(transit_tile->id().tileid(),transit_tile->id().level(), i);
           GraphId tileid = transit_tile->id();
+          std::unordered_multimap<GraphId,uint64_t> visited_map;
 
           if (!WalkTransitLines(currentNode, reader_transit_level,
-                                tileid, lock,t->destination, t->date_time,
-                                t->route_id)) {
-            LOG_ERROR("Test from " + t->origin + " to " + t->destination + " @ " +
-                      t->date_time + " route id " + t->route_id + " failed.");
-            failure_count++;
-          } else {
-            LOG_INFO("Test from " + t->origin + " to " + t->destination + " @ " +
-                     t->date_time + " route id " + t->route_id + " passed.");
+                                tileid, lock, visited_map, t->date_time,
+                                t->destination, t->route_id)) {
+
+            //Try again avoiding the departures found in the previous "walk"
+            //We do this because we could of walked in the incorrect direction and
+            //the route line could have the same name and id.
+            if (!WalkTransitLines(currentNode, reader_transit_level,
+                                  tileid, lock, visited_map, t->date_time,
+                                  t->destination, t->route_id)) {
+
+              LOG_ERROR("Test from " + t->origin + " to " + t->destination + " @ " +
+                        t->date_time + " route id " + t->route_id + " failed.");
+              failure_count++;
+              continue;
+            }
           }
+          LOG_DEBUG("Test from " + t->origin + " to " + t->destination + " @ " +
+                   t->date_time + " route id " + t->route_id + " passed.");
         }
       }
     }
@@ -214,7 +246,6 @@ std::vector<OneStopTest> ParseTestFile(const std::string& filename) {
   return onestoptests;
 }
 
-/*
 void ParseLogFile(const std::string& filename) {
   typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
   boost::char_separator<char> sep{" "};
@@ -288,7 +319,7 @@ void ParseLogFile(const std::string& filename) {
     std::cout << "One stop test file: " << filename << " not found" << std::endl;
   }
 
-}*/
+}
 
 // Enhance the local level of the graph
 void ValidateTransit::Validate(const boost::property_tree::ptree& pt,
@@ -362,9 +393,11 @@ void ValidateTransit::Validate(const boost::property_tree::ptree& pt,
     }
   }
 
-  if (failure_count)
+  if (failure_count) {
     LOG_ERROR("There were " + std::to_string(failure_count) + " failures!");
-
+  } else {
+    LOG_INFO("Success!  There were " + std::to_string(failure_count) + " failures.");
+  }
 
   auto t2 = std::chrono::high_resolution_clock::now();
   uint32_t secs = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
@@ -400,21 +433,16 @@ void ValidateTransit::Validate(const boost::property_tree::ptree& pt,
     for(; transit_file_itr != end_file_itr; ++transit_file_itr) {
       if(boost::filesystem::is_regular(transit_file_itr->path()) && transit_file_itr->path().extension() == ".gph") {
         auto graph_id = GraphTile::GetTileId(transit_file_itr->path().string());
-        auto local_graph_id = graph_id;
-        local_graph_id.fields.level -= 1;
-        if(GraphReader::DoesTileExist(hierarchy_properties, local_graph_id)) {
-          const GraphTile* tile = reader.GetGraphTile(local_graph_id);
-          all_tiles.emplace(local_graph_id);
-          const std::string destination_path = pt.get<std::string>("mjolnir.tile_dir") + '/' + GraphTile::FileSuffix(graph_id, hierarchy);
-          boost::filesystem::path filename = destination_path;
-          // Make sure the directory exists on the system and copy to the tile_dir
-          if (!boost::filesystem::exists(filename.parent_path()))
-            boost::filesystem::create_directories(filename.parent_path());
-          boost::filesystem::copy_file(transit_file_itr->path(),destination_path,boost::filesystem::copy_option::overwrite_if_exists);
-        }
+        GraphId transit_tile_id = GraphId(graph_id.tileid(), graph_id.level()-1, graph_id.id());
+        all_tiles.emplace(transit_tile_id);
       }
     }
   }
+
+  boost::property_tree::ptree local_pt = pt;
+  local_pt.get_child("mjolnir").erase("tile_dir");
+  local_pt.add("mjolnir.tile_dir", std::string(*transit_dir));
+
   if (!all_tiles.size()) {
     LOG_INFO("No transit tiles found. Transit will not be validated.");
     return;
@@ -451,7 +479,7 @@ void ValidateTransit::Validate(const boost::property_tree::ptree& pt,
     // Make the thread
     results.emplace_back();
     threads[i].reset(
-        new std::thread(validate, std::cref(pt.get_child("mjolnir")),
+        new std::thread(validate, std::cref(local_pt.get_child("mjolnir")),
                         std::ref(lock), tile_start, tile_end,
                         std::cref(onestoptests), std::ref(results.back())));
   }
@@ -477,9 +505,11 @@ void ValidateTransit::Validate(const boost::property_tree::ptree& pt,
     }
   }
 
-  if (failure_count)
+  if (failure_count) {
     LOG_ERROR("There were " + std::to_string(failure_count) + " failures!");
-
+  } else {
+    LOG_INFO("Success!  There were " + std::to_string(failure_count) + " failures.");
+  }
 
   auto t2 = std::chrono::high_resolution_clock::now();
   uint32_t secs = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();

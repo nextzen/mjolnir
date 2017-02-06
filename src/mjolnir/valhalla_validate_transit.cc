@@ -97,20 +97,25 @@ int main(int argc, char** argv) {
     valhalla::midgard::logging::Configure(logging_config);
   }
 
-  std::string testfile;
+  std::string testfile, build_validate;
   std::vector<OneStopTest> onestoptests;
 
-  testfile = std::string("acc.tests");
-  onestoptests = ParseTestFile(testfile);
-  std::sort(onestoptests.begin(), onestoptests.end());
+  if(argc > 3) {
+    build_validate = std::string(argv[3]);
+  }
 
-  //ParseLogFile("out.log");
-
-  //return EXIT_SUCCESS;
-
-
-  // Validate transit
-  ValidateTransit::Validate(pt,onestoptests);
+  // do we validate the transit or build the test.
+  // test file is the results of running transit_prod_routes.tmpl tests
+  if (build_validate == "validate") {
+    testfile = std::string(std::string(argv[4]));
+    onestoptests = ParseTestFile(testfile);
+    std::sort(onestoptests.begin(), onestoptests.end());
+    // Validate transit
+    ValidateTransit::Validate(pt,onestoptests);
+  } else if (build_validate == "build") {
+    testfile = std::string(std::string(argv[4]));
+    ParseLogFile(testfile);
+  }
 
   return EXIT_SUCCESS;
 }
